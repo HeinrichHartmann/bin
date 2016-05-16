@@ -1,0 +1,11 @@
+#!/bin/bash
+
+function quote {
+    A="${1//\\/\\\\}"
+    printf "%s" "${A//\"/\\\"}"
+}
+
+EMACS_C='emacsclient --create-frame --alternate-editor "" --tty'
+TMUX_C="tmux new-session -A -s emacs \"$(quote "$EMACS_C")\""
+
+gnome-terminal -e "$TMUX_C"

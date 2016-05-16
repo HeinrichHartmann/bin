@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+import subprocess
 from ftplib import FTP
 import json
 import sh
@@ -33,16 +33,12 @@ def connect():
         conf['password']
     )
 
-def ftp_get_filename():
-    file_list = sorted(filter(
+def ftp_get_file_list():
+    return sorted(filter(
         lambda p: p.endswith("pdf"),
         ftp.nlst()
     ))
 
-    if len(file_list) == 0:
-        return None
-
-    return file_list[-1]
 
 def ftp_store(file_name):
     tfn = "/tmp/" + file_name
@@ -55,19 +51,25 @@ def ftp_rm(file_name):
     ftp.delete(file_name)
     print "Removed file ", file_name
 
-def archive(src, name, scan_id):
-    dest = expanduser("~/Documents/") + \
+def archive_dest(name, scan_id):
+    return expanduser("~/Documents/") + \
            time.strftime("%Y-%m-%d_") + \
            name + "_" + scan_id  + ".pdf"
+
+def archive(src, name, scan_id):
+    dest = archive_dest(name, scan_id)
     os.rename(src, dest)
     print "> wrote file://" + dest
 
 p = 0
 def pdf_open(path):
-    import subprocess
     global p
     p = subprocess.Popen(["evince", path])
     # returncode = p.wait()
+
+def preview(temp_file):
+    print "Opening pdf file://" + temp_file
+    pdf_open(temp_file)
 
 def extract_scan_id(file_name):
     x = re.match("scan_0*(\d+).pdf", file_name)
@@ -76,29 +78,35 @@ def extract_scan_id(file_name):
         return ""
     return "S" + x.groups()[0]
 
+pdftk=sh.Command("pdftk")
 def main():
     connect()
 
-    while (True):
-        file_name = ftp_get_filename()
-        if not file_name: break
-
+    stash_buffer = []
+    for file_name in ftp_get_file_list():
         scan_id = extract_scan_id(file_name)
         temp_file = ftp_store(file_name)
 
-        print "Opening pdf file://" + temp_file
-        pdf_open(temp_file)
+        preview(temp_file)
 
-        arc_name = raw_input("Archive (default:n)? ")
-        if not (arc_name.lower() in ["", "n"]):b
+        action = raw_input("Action archive&delete, delete, stash, collate")
+
+        if action == 'a':
+            arc_name = raw_input("Name: ")
             archive(temp_file, arc_name, scan_id)
             ftp_rm(file_name)
-        else:
-            if raw_input("Delete (default:y)? ") != "n":
-                ftp_rm(file_name)
-                print "> deleted"
-
-    p.terminate()
+        elif action == 'd':
+            ftp_rm(file_name)
+        elif action == 's':
+            stash_buffer.append(temp_file)
+            ftp_rm(file_name)
+        elif action == 'c':
+            # pdftk A=even.pdf B=odd.pdf shuffle A Bend-1 output collated.pdf
+            stash_file = stash_buffer.pop()
+            name = raw_input("Name: ")
+            dest = archive_dest(name, scan_id)
+            pdftk("A=" + temp_file, "B=" + stash_file, "shuffle", "A", "Bend-1", "output", dest)
+            ftp_rm(file_name)
 
 if __name__ == "__main__":
     main()
