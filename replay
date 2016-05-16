@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+import sys
+import fileinput
+import time
+
+import argparse
+
+parser = argparse.ArgumentParser(description="Emit a sequence of lines to stdout.")
+parser.add_argument("file", nargs="?", default="/dev/stdin", help="read lines from"
+parser.add_argument("-d", "--delay", default=0.1, type=float, help="delay between emitted lines")
+parser.add_argument("-p", "--prompt", action='store_true')
+
+args = parser.parse_args()
+
+print(args)
+
+with open(args.file) as fh:
+    for line in fh:
+        if len(line) == 0:
+            sys.stderr.write("warning: empty line")
+        if args.prompt:
+            raw_input("next> " + line)
+        sys.stdout.write(line)
+        sys.stdout.flush()
+        time.sleep(args.delay)

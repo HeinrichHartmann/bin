@@ -1,0 +1,3 @@
+#!/bin/bash
+
+HOME=~/git/spacemacs-home /usr/bin/emacs $@

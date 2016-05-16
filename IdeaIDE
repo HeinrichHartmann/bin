@@ -1,0 +1,4 @@
+#!/bin/bash
+
+nohup ~/Programs/idea-IU-13/bin/idea.sh
+
